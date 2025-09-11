@@ -4,7 +4,7 @@ __pycache__/
 *.pyo
 
 # Project specific data files
-data/*.csv
+data/fake_data/*.csv
 output/*.html
 
 # OS files
