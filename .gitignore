@@ -1,0 +1,12 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Project specific data files
+data/*.csv
+output/*.html
+
+# OS files
+.DS_Store
+Thumbs.db
