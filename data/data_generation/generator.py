@@ -29,7 +29,7 @@ class DataGenerator:
         claims = []
 
         for _ in range(claim_count):
-            charges = round(random.uniform(0.01, 1000000.0), 2)
+            charges = round(random.uniform(0.01, 10000.0), 2)
             benefit = round(random.uniform(0.01, charges), 2)
 
             claim = Claim(
@@ -53,7 +53,8 @@ class DataGenerator:
                 invoice_id=self.invoice_counter,
                 claim_id=claim_id,
                 type_of_bill=random.choice(list(BillType)),
-                transaction_value=round(random.uniform(-1000000.0, 2000000.0), 2)
+                transaction_value=round(random.uniform(-2000.0, 5000.0), 2)
+
             )
             invoices.append(invoice)
             self.invoice_counter += 1
