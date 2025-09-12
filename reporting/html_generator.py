@@ -11,11 +11,13 @@ class HTMLReportGenerator:
         # Calculate summary statistics
         total_claims = len(results)
         balanced_count = sum(1 for r in results if r.reconciliation_status.value == "BALANCED")
+        nearly_balanced_count = sum(1 for r in results if r.reconciliation_status.value == "NEARLY_BALANCED")
         overpaid_count = sum(1 for r in results if r.reconciliation_status.value == "OVERPAID")
         underpaid_count = sum(1 for r in results if r.reconciliation_status.value == "UNDERPAID")
 
         # Calculate percentages
         balanced_percentage = round((balanced_count / total_claims) * 100, 1) if total_claims > 0 else 0
+        nearly_balanced_percentage = round((nearly_balanced_count / total_claims) * 100, 1) if total_claims > 0 else 0
         overpaid_percentage = round((overpaid_count / total_claims) * 100, 1) if total_claims > 0 else 0
         underpaid_percentage = round((underpaid_count / total_claims) * 100, 1) if total_claims > 0 else 0
 
@@ -24,6 +26,8 @@ class HTMLReportGenerator:
             'total_claims': total_claims,
             'balanced_count': balanced_count,
             'balanced_percentage': balanced_percentage,
+            'nearly_balanced_count': nearly_balanced_count,
+            'nearly_balanced_percentage': nearly_balanced_percentage,
             'overpaid_count': overpaid_count,
             'overpaid_percentage': overpaid_percentage,
             'underpaid_count': underpaid_count,

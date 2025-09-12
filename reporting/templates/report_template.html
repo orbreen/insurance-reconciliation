@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Insurance Claims Reconciliation Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -46,8 +47,31 @@
             color: #007bff;
         }
         .balanced { border-left-color: #28a745; }
+        .nearly-balanced { border-left-color: #17a2b8; }
         .overpaid { border-left-color: #dc3545; }
         .underpaid { border-left-color: #ffc107; }
+
+        .charts-section {
+            margin: 40px 0;
+        }
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .chart-container h3 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -68,10 +92,17 @@
             background-color: #f5f5f5;
         }
         .status-balanced { background-color: #d4edda; color: #155724; }
-        .status-overpaid { background-color: #f8d7da; color: #721c24; }
+        .status-nearly_balanced { background-color: #d1ecf1; color: #0c5460; }
         .status-underpaid { background-color: #fff3cd; color: #856404; }
+        .status-overpaid { background-color: #f8d7da; color: #721c24; }
         .amount {
             text-align: right;
+        }
+
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -88,6 +119,10 @@
                 <h3>Balanced Claims</h3>
                 <div class="value">{{ balanced_count }} ({{ balanced_percentage }}%)</div>
             </div>
+            <div class="summary-card nearly-balanced">
+                <h3>Nearly Balanced (±5%)</h3>
+                <div class="value">{{ nearly_balanced_count }} ({{ nearly_balanced_percentage }}%)</div>
+            </div>
             <div class="summary-card overpaid">
                 <h3>Overpaid Claims</h3>
                 <div class="value">{{ overpaid_count }} ({{ overpaid_percentage }}%)</div>
@@ -98,14 +133,32 @@
             </div>
         </div>
 
+        <div class="charts-section">
+            <h2 style="text-align: center;">Visual Analytics</h2>
+
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <h3>Variance Range Distribution</h3>
+                    <canvas id="varianceChart"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>Claims by Month</h3>
+                    <canvas id="timelineChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <table>
             <thead>
                 <tr>
                     <th>Claim ID</th>
                     <th>Patient ID</th>
+                    <th>Date of Service</th>
                     <th class="amount">Charges Amount</th>
                     <th class="amount">Benefit Amount</th>
                     <th class="amount">Total Transactions</th>
+                    <th class="amount">Variance %</th>
                     <th>Status</th>
                 </tr>
             </thead>
@@ -114,16 +167,98 @@
                 <tr>
                     <td>{{ result.claim_id }}</td>
                     <td>{{ result.patient_id }}</td>
+                    <td>{{ result.date_of_service.strftime('%Y-%m-%d') }}</td>
                     <td class="amount">${{ "%.2f"|format(result.charges_amount) }}</td>
                     <td class="amount">${{ "%.2f"|format(result.benefit_amount) }}</td>
                     <td class="amount">${{ "%.2f"|format(result.total_transaction_value) }}</td>
+                    <td class="amount">{{ "%.2f"|format(result.variance_percentage) }}%</td>
                     <td class="status-{{ result.reconciliation_status.value.lower() }}">
-                        {{ result.reconciliation_status.value }}
+                        {{ result.reconciliation_status.value.replace('_', ' ') }}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    <script>
+        // Variance Range Distribution Bar Chart
+        const variances = [
+            {% for result in results %}{{ result.variance_percentage }}{{ "," if not loop.last }}{% endfor %}
+        ];
+
+        const varianceBuckets = [0, 0, 0, 0, 0]; // 0-1%, 1-5%, 5-10%, 10-25%, 25%+
+        variances.forEach(v => {
+            if (v <= 1) varianceBuckets[0]++;
+            else if (v <= 5) varianceBuckets[1]++;
+            else if (v <= 10) varianceBuckets[2]++;
+            else if (v <= 25) varianceBuckets[3]++;
+            else varianceBuckets[4]++;
+        });
+
+        new Chart(document.getElementById('varianceChart'), {
+            type: 'bar',
+            data: {
+                labels: ['0-1%', '1-5%', '5-10%', '10-25%', '25%+'],
+                datasets: [{
+                    label: 'Number of Claims',
+                    data: varianceBuckets,
+                    backgroundColor: ['#28a745', '#17a2b8', '#007bff', '#ffc107', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: { y: { beginAtZero: true } },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // Claims by Month Timeline Chart
+        const claimDates = [
+            {% for result in results %}'{{ result.date_of_service.strftime('%Y-%m-%d') }}'{{ "," if not loop.last }}{% endfor %}
+        ];
+
+        // Group claims by month
+        const monthCounts = {};
+        claimDates.forEach(dateStr => {
+            const date = new Date(dateStr);
+            const monthKey = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0');
+            monthCounts[monthKey] = (monthCounts[monthKey] || 0) + 1;
+        });
+
+        // Sort months and prepare data
+        const sortedMonths = Object.keys(monthCounts).sort();
+        const monthLabels = sortedMonths.map(month => {
+            const [year, monthNum] = month.split('-');
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            return monthNames[parseInt(monthNum) - 1] + ' ' + year;
+        });
+        const monthData = sortedMonths.map(month => monthCounts[month]);
+
+        new Chart(document.getElementById('timelineChart'), {
+            type: 'line',
+            data: {
+                labels: monthLabels,
+                datasets: [{
+                    label: 'Number of Claims',
+                    data: monthData,
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    </script>
 </body>
 </html>
