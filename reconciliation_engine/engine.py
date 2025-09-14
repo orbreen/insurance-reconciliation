@@ -2,8 +2,7 @@ from datetime import datetime
 
 import polars as pl
 from typing import List
-from models import ReconciliationStatus, ReconciliationResult
-
+from reconciliation_engine.models import ReconciliationStatus, ReconciliationResult
 
 class ReconciliationEngine:
     def __init__(self, claims_file: str, invoices_file: str, tolerance_percentage: float = 5.0):
