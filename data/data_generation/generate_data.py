@@ -1,14 +1,23 @@
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
+
 import polars as pl
-from generator import DataGenerator
+from data.data_generation.generator import DataGenerator
+from utils.logger import setup_logger
 
 
 def main():
+    logger = setup_logger("DataGenerator")
+
+    logger.info("Starting data generation process")
     generator = DataGenerator()
 
-    print("Generating 200 patients...")
+    logger.info("Generating 200 patients...")
     patients = generator.generate_patients(200)
 
-    print("Generating claims and invoices...")
+    logger.info("Generating claims and invoices...")
     all_claims = []
     all_invoices = []
 
@@ -19,6 +28,8 @@ def main():
         for claim in claims:
             invoices = generator.generate_invoices_for_claim(claim.claim_id)
             all_invoices.extend(invoices)
+
+    logger.info(f"Generated {len(all_claims)} claims and {len(all_invoices)} invoices")
 
     claims_data = [
         {
@@ -44,10 +55,14 @@ def main():
     claims_df = pl.DataFrame(claims_data)
     invoices_df = pl.DataFrame(invoices_data)
 
-    claims_df.write_csv("data/fake_data/claims.csv")
-    invoices_df.write_csv("data/fake_data/invoices.csv")
+    try:
+        claims_df.write_csv("data/fake_data/claims.csv")
+        invoices_df.write_csv("data/fake_data/invoices.csv")
+        logger.info("CSV files saved successfully")
+    except Exception as e:
+        logger.error(f"Failed to save CSV files: {e}")
+        raise
 
-    print(f"Generated {len(claims_data)} claims and {len(invoices_data)} invoices")
 
 if __name__ == "__main__":
     main()

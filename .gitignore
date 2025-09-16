@@ -6,7 +6,7 @@ __pycache__/
 # Project specific data files
 data/fake_data/*.csv
 output/*.html
-
+logs/*
 # OS files
 .DS_Store
 Thumbs.db

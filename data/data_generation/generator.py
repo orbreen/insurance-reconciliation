@@ -1,11 +1,15 @@
 import random
 from datetime import datetime, timedelta
 from faker import Faker
+import time
 from typing import List
 from models import Patient, Claim, Invoice, BillType
 
 class DataGenerator:
-    def __init__(self, seed: int = 42):
+    def __init__(self, seed: int = None):
+        if seed is None:
+            seed = int(time.time())
+
         self.fake = Faker()
         Faker.seed(seed)
         random.seed(seed)
