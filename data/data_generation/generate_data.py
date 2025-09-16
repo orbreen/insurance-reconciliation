@@ -10,6 +10,9 @@ from utils.logger import setup_logger
 
 def main():
     logger = setup_logger("DataGenerator")
+    
+    os.makedirs("data/fake_data", exist_ok=True)
+    os.makedirs("output", exist_ok=True)
 
     logger.info("Starting data generation process")
     generator = DataGenerator()
